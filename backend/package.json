@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
+    "seed:user2": "tsx src/scripts/seedUser2.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1,85 +1,32 @@
 /**
- * Database seed script — creates a demo account + sample tasks.
+ * Database seed script — creates TWO demo accounts, each with their own tasks.
  *
- * Reuses the real repositories and password hasher so seeded data is identical
- * to what the running app would create. Safe to re-run: it clears existing
- * demo data first.
+ * Two users are seeded so you can demonstrate data isolation in the review:
+ * logging in as one user must never reveal the other's tasks (requirement #3).
  *
- * Run with:  npm run seed
+ * Run with:  npm run seed          (seeds both users)
+ *            npm run seed:user2    (seeds only user 2)
  *
- * Demo login:  demo@taskapp.com  /  Demo1234
+ * Demo logins:
+ *   User 1 →  demo@taskapp.com  /  Demo1234
+ *   User 2 →  sara@taskapp.com  /  Sara1234
  */
-import mongoose, { Types } from 'mongoose';
+import mongoose from 'mongoose';
 import { env } from '../config/env';
-import { UserModel } from '../infrastructure/models/UserModel';
-import { TaskModel } from '../infrastructure/models/TaskModel';
-import { MongoUserRepository } from '../infrastructure/repositories/MongoUserRepository';
-import { MongoTaskRepository } from '../infrastructure/repositories/MongoTaskRepository';
-import { BcryptPasswordHasher } from '../infrastructure/security/BcryptPasswordHasher';
-import type { TaskStatus, TaskPriority } from '../domain/entities/Task';
-
-const DEMO_EMAIL = 'demo@taskapp.com';
-const DEMO_PASSWORD = 'Demo1234';
-
-interface SeedTask {
-  title: string;
-  description: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  dueInDays: number | null;
-}
-
-const SEED_TASKS: SeedTask[] = [
-  { title: 'Set up project repository', description: 'Init git, add README and .gitignore', status: 'done', priority: 'high', dueInDays: -2 },
-  { title: 'Design database schema', description: 'User and Task models with indexes', status: 'done', priority: 'medium', dueInDays: -1 },
-  { title: 'Build authentication', description: 'JWT login/register with bcrypt', status: 'in_progress', priority: 'high', dueInDays: 1 },
-  { title: 'Implement task CRUD API', description: 'Create, read, update, delete endpoints', status: 'in_progress', priority: 'medium', dueInDays: 2 },
-  { title: 'Add search and filters', description: 'Search by title, filter by status/priority', status: 'todo', priority: 'medium', dueInDays: 3 },
-  { title: 'Write frontend UI', description: 'React + Tailwind responsive board', status: 'todo', priority: 'high', dueInDays: 5 },
-  { title: 'Buy groceries', description: 'Milk, eggs, coffee', status: 'todo', priority: 'low', dueInDays: null },
-];
+import { seedUser, USER_ONE, USER_TWO } from './seedData';
 
 async function seed(): Promise<void> {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database (2 users)...');
   await mongoose.connect(env.MONGODB_URI);
 
-  const users = new MongoUserRepository();
-  const tasks = new MongoTaskRepository();
-  const hasher = new BcryptPasswordHasher();
-
-  // Clear any previous demo user + their tasks (idempotent re-runs).
-  const existing = await UserModel.findOne({ email: DEMO_EMAIL }).lean<{
-    _id: Types.ObjectId;
-  } | null>();
-  if (existing) {
-    await TaskModel.deleteMany({ userId: existing._id });
-    await UserModel.deleteOne({ _id: existing._id });
-    console.log('   • cleared previous demo data');
-  }
-
-  const passwordHash = await hasher.hash(DEMO_PASSWORD);
-  const user = await users.create({ name: 'Demo User', email: DEMO_EMAIL, passwordHash });
-  console.log(`   • created demo user (${DEMO_EMAIL})`);
-
-  // A fixed base date keeps seeding deterministic regardless of run time.
-  const base = new Date('2026-07-26T12:00:00.000Z');
-  for (const t of SEED_TASKS) {
-    const dueDate =
-      t.dueInDays === null ? null : new Date(base.getTime() + t.dueInDays * 86_400_000);
-    await tasks.create({
-      userId: user.id,
-      title: t.title,
-      description: t.description,
-      status: t.status,
-      priority: t.priority,
-      dueDate,
-    });
-  }
-  console.log(`   • created ${SEED_TASKS.length} sample tasks`);
+  await seedUser(USER_ONE);
+  await seedUser(USER_TWO);
 
   await mongoose.disconnect();
   console.log('✅ Seed complete');
-  console.log(`\n   Demo login →  ${DEMO_EMAIL}  /  ${DEMO_PASSWORD}\n`);
+  console.log('\n   Demo logins:');
+  console.log(`     User 1 →  ${USER_ONE.email}  /  ${USER_ONE.password}`);
+  console.log(`     User 2 →  ${USER_TWO.email}  /  ${USER_TWO.password}\n`);
 }
 
 seed().catch((err) => {
