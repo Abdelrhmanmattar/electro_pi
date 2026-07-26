@@ -38,6 +38,7 @@ export interface Task {
   priority: TaskPriority;
   priorityLabel: string;
   dueDate: string | null;
+  coverImage: string | null;
   createdAt: string;
   updatedAt: string;
 }

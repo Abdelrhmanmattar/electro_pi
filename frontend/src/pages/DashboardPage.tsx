@@ -9,17 +9,17 @@ import { useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { TaskFilters } from '../components/TaskFilters';
 import { TaskBoard } from '../components/TaskBoard';
-import { TaskForm } from '../components/TaskForm';
+import { TaskForm, type TaskFormResult } from '../components/TaskForm';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/States';
 import { useTasks } from '../hooks/useTasks';
 import { getErrorMessage } from '../lib/api';
-import type { Task, TaskFilters as Filters, TaskInput } from '../types';
+import type { Task, TaskFilters as Filters } from '../types';
 
 export function DashboardPage() {
   const [filters, setFilters] = useState<Filters>({ search: '', status: '', priority: '' });
-  const { tasks, loading, error, refetch, createTask, updateTask, deleteTask } = useTasks(filters);
+  const { tasks, loading, error, refetch, saveTask, deleteTask, moveTask } = useTasks(filters);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -38,9 +38,12 @@ export function DashboardPage() {
     setFormOpen(true);
   };
 
-  const handleSubmit = async (input: TaskInput) => {
-    if (editing) await updateTask(editing.id, input);
-    else await createTask(input);
+  const handleSubmit = async (result: TaskFormResult) => {
+    await saveTask(result.input, {
+      id: editing?.id,
+      coverFile: result.coverFile,
+      removeCover: result.removeCover,
+    });
     setFormOpen(false);
     setEditing(null);
   };
@@ -114,7 +117,7 @@ export function DashboardPage() {
             />
           )
         ) : (
-          <TaskBoard tasks={tasks} onEdit={openEdit} onDelete={setDeleting} />
+          <TaskBoard tasks={tasks} onEdit={openEdit} onDelete={setDeleting} onMove={moveTask} />
         )}
       </main>
 

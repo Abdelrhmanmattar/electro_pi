@@ -15,6 +15,10 @@ build/
 **/dist/
 **/build/
 
+# Uploaded files (user content — keep the folder, ignore its contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*

@@ -15,6 +15,11 @@ import { MongoUserRepository } from './infrastructure/repositories/MongoUserRepo
 import { MongoTaskRepository } from './infrastructure/repositories/MongoTaskRepository';
 import { BcryptPasswordHasher } from './infrastructure/security/BcryptPasswordHasher';
 import { JwtTokenService } from './infrastructure/security/JwtTokenService';
+import {
+  LocalFileStorage,
+  UPLOAD_DIR,
+  UPLOAD_ROUTE,
+} from './infrastructure/storage/LocalFileStorage';
 
 // Application (use cases)
 import { RegisterUser } from './application/use-cases/auth/RegisterUser';
@@ -25,6 +30,7 @@ import { GetTasks } from './application/use-cases/tasks/GetTasks';
 import { GetTaskById } from './application/use-cases/tasks/GetTaskById';
 import { UpdateTask } from './application/use-cases/tasks/UpdateTask';
 import { DeleteTask } from './application/use-cases/tasks/DeleteTask';
+import { SetTaskCover } from './application/use-cases/tasks/SetTaskCover';
 
 // Presentation
 import { AuthController } from './presentation/controllers/AuthController';
@@ -40,6 +46,7 @@ export function createApp(): Express {
   const taskRepo = new MongoTaskRepository();
   const hasher = new BcryptPasswordHasher();
   const tokens = new JwtTokenService();
+  const storage = new LocalFileStorage();
 
   const authController = new AuthController(
     new RegisterUser(userRepo, hasher, tokens),
@@ -52,7 +59,9 @@ export function createApp(): Express {
     new GetTasks(taskRepo),
     new GetTaskById(taskRepo),
     new UpdateTask(taskRepo),
-    new DeleteTask(taskRepo)
+    new DeleteTask(taskRepo),
+    new SetTaskCover(taskRepo, storage),
+    storage
   );
 
   const authMiddleware = makeAuthMiddleware(tokens);
@@ -62,6 +71,9 @@ export function createApp(): Express {
 
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
   app.use(express.json());
+
+  // Serve uploaded files statically (cover images).
+  app.use(UPLOAD_ROUTE, express.static(UPLOAD_DIR));
 
   // Health check (handy for the reviewer / deploy).
   app.get('/api/health', (_req, res) => {

@@ -25,6 +25,7 @@ interface RawTask {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: Date | null;
+  coverImage: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +39,7 @@ function toDomain(raw: RawTask): Task {
     status: raw.status,
     priority: raw.priority,
     dueDate: raw.dueDate,
+    coverImage: raw.coverImage ?? null,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
@@ -62,6 +64,7 @@ export class MongoTaskRepository implements ITaskRepository {
       status: input.status ?? 'todo',
       priority: input.priority ?? 'medium',
       dueDate: input.dueDate ?? null,
+      coverImage: input.coverImage ?? null,
     });
     return toDomain(doc.toObject() as RawTask);
   }
@@ -122,6 +125,7 @@ export class MongoTaskRepository implements ITaskRepository {
     if (changes.status !== undefined) update.status = changes.status;
     if (changes.priority !== undefined) update.priority = changes.priority;
     if (changes.dueDate !== undefined) update.dueDate = changes.dueDate;
+    if (changes.coverImage !== undefined) update.coverImage = changes.coverImage;
 
     const raw = await TaskModel.findOneAndUpdate(
       { _id: id, userId }, // scoped update — can't touch another user's task

@@ -46,6 +46,12 @@ const taskSchema = new Schema(
       type: Date,
       default: null,
     },
+    // Relative path to the uploaded cover image, e.g. "/uploads/<file>.jpg".
+    // Null when the task has no cover.
+    coverImage: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

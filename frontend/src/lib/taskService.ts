@@ -31,4 +31,20 @@ export const taskService = {
   async remove(id: string): Promise<void> {
     await api.delete(`/tasks/${id}`);
   },
+
+  /** Upload a cover image for a task (multipart/form-data, field "image"). */
+  async uploadCover(id: string, file: File): Promise<Task> {
+    const form = new FormData();
+    form.append('image', file);
+    const { data } = await api.post<TaskResponse>(`/tasks/${id}/cover`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.task;
+  },
+
+  /** Remove a task's cover image. */
+  async removeCover(id: string): Promise<Task> {
+    const { data } = await api.delete<TaskResponse>(`/tasks/${id}/cover`);
+    return data.task;
+  },
 };

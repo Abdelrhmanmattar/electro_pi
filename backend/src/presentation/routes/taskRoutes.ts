@@ -1,15 +1,18 @@
 /**
  * Task routes (presentation layer) — ALL protected by the auth middleware.
- *   GET    /api/tasks         list (search + filter + pagination)
- *   POST   /api/tasks         create
- *   GET    /api/tasks/:id     read one
- *   PATCH  /api/tasks/:id     update
- *   DELETE /api/tasks/:id     delete
+ *   GET    /api/tasks             list (search + filter + pagination)
+ *   POST   /api/tasks             create
+ *   GET    /api/tasks/:id         read one
+ *   PATCH  /api/tasks/:id         update
+ *   DELETE /api/tasks/:id         delete
+ *   POST   /api/tasks/:id/cover   upload a cover image (multipart, field "image")
+ *   DELETE /api/tasks/:id/cover   remove the cover image
  */
 import { Router, type RequestHandler } from 'express';
 import type { TaskController } from '../controllers/TaskController';
 import { asyncHandler } from '../middlewares/asyncHandler';
 import { validate } from '../middlewares/validate';
+import { uploadImage } from '../middlewares/upload';
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -27,6 +30,10 @@ export function createTaskRoutes(controller: TaskController, authMiddleware: Req
   router.get('/:id', asyncHandler(controller.getOne));
   router.patch('/:id', validate(updateTaskSchema), asyncHandler(controller.update));
   router.delete('/:id', asyncHandler(controller.remove));
+
+  // Cover image (bonus: task attachments). uploadImage runs multer first.
+  router.post('/:id/cover', uploadImage, asyncHandler(controller.uploadCover));
+  router.delete('/:id/cover', asyncHandler(controller.removeCover));
 
   return router;
 }

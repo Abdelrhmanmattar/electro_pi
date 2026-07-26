@@ -16,6 +16,7 @@ export interface TaskResponse {
   priority: string;
   priorityLabel: string;
   dueDate: string | null;
+  coverImage: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ export function toTaskResponse(task: Task): TaskResponse {
     priority: task.priority,
     priorityLabel: TASK_PRIORITY_LABELS[task.priority],
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    coverImage: task.coverImage,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   };

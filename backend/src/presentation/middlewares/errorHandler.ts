@@ -6,6 +6,7 @@
  * (details are logged server-side, never leaked to the client).
  */
 import type { Request, Response, NextFunction } from 'express';
+import { MulterError } from 'multer';
 import { AppError, ValidationError } from '../../application/errors/AppError';
 
 interface ErrorBody {
@@ -31,6 +32,20 @@ export function errorHandler(
       body.error.details = err.details;
     }
     res.status(err.statusCode).json(body);
+    return;
+  }
+
+  // Multer upload errors (file too large, wrong field, etc.) → 400.
+  if (err instanceof MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE' ? 'Image must be 2 MB or smaller' : err.message;
+    res.status(400).json({ error: { code: 'UPLOAD_ERROR', message } });
+    return;
+  }
+
+  // fileFilter rejections come through as a plain Error with our message.
+  if (err instanceof Error && err.message.startsWith('Only image files')) {
+    res.status(400).json({ error: { code: 'UPLOAD_ERROR', message: err.message } });
     return;
   }
 

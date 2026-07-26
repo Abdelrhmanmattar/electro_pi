@@ -9,7 +9,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { taskService } from '../lib/taskService';
 import { getErrorMessage } from '../lib/api';
-import type { Task, TaskFilters, TaskInput, Pagination } from '../types';
+import { STATUS_LABELS } from '../types';
+import type { Task, TaskFilters, TaskInput, TaskStatus, Pagination } from '../types';
 
 export function useTasks(filters: TaskFilters) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -37,17 +38,30 @@ export function useTasks(filters: TaskFilters) {
     void fetchTasks();
   }, [fetchTasks]);
 
-  const createTask = useCallback(
-    async (input: TaskInput) => {
-      await taskService.create(input);
-      await fetchTasks();
-    },
-    [fetchTasks]
-  );
+  /**
+   * Save a task (create or update) together with an optional cover change.
+   * The cover endpoints need a task id, so on CREATE we create first, then
+   * upload the cover to the new id. A single refetch runs at the end.
+   */
+  const saveTask = useCallback(
+    async (
+      input: TaskInput,
+      opts: { id?: string; coverFile?: File; removeCover?: boolean } = {}
+    ) => {
+      let taskId = opts.id;
+      if (taskId) {
+        await taskService.update(taskId, input);
+      } else {
+        const created = await taskService.create(input);
+        taskId = created.id;
+      }
 
-  const updateTask = useCallback(
-    async (id: string, input: Partial<TaskInput>) => {
-      await taskService.update(id, input);
+      if (opts.coverFile) {
+        await taskService.uploadCover(taskId, opts.coverFile);
+      } else if (opts.removeCover) {
+        await taskService.removeCover(taskId);
+      }
+
       await fetchTasks();
     },
     [fetchTasks]
@@ -61,14 +75,40 @@ export function useTasks(filters: TaskFilters) {
     [fetchTasks]
   );
 
+  /**
+   * Move a task to a new status (used by drag-and-drop).
+   * Optimistic: update local state immediately so the card jumps columns
+   * instantly, then persist. If the request fails, roll back to the snapshot.
+   */
+  const moveTask = useCallback(
+    async (id: string, newStatus: TaskStatus) => {
+      const snapshot = tasks;
+      const target = tasks.find((t) => t.id === id);
+      if (!target || target.status === newStatus) return; // no-op
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, status: newStatus, statusLabel: STATUS_LABELS[newStatus] } : t
+        )
+      );
+      try {
+        await taskService.update(id, { status: newStatus });
+      } catch (err) {
+        setTasks(snapshot); // roll back on failure
+        setError(getErrorMessage(err));
+      }
+    },
+    [tasks]
+  );
+
   return {
     tasks,
     pagination,
     loading,
     error,
     refetch: fetchTasks,
-    createTask,
-    updateTask,
+    saveTask,
     deleteTask,
+    moveTask,
   };
 }

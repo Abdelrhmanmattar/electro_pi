@@ -2,12 +2,17 @@
  * TaskCard — one task in a Kanban column.
  */
 import { StatusBadge, PriorityBadge } from './ui/Badge';
+import { assetUrl } from '../config/env';
 import type { Task } from '../types';
 
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
+  /** Fired when the user starts dragging this card (drag-and-drop). */
+  onDragStart?: (task: Task) => void;
+  onDragEnd?: () => void;
+  isDragging?: boolean;
 }
 
 /** Format an ISO date as e.g. "Aug 1, 2026"; flag if overdue. */
@@ -19,11 +24,41 @@ function formatDue(iso: string | null): { text: string; overdue: boolean } | nul
   return { text, overdue };
 }
 
-export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onEdit,
+  onDelete,
+  onDragStart,
+  onDragEnd,
+  isDragging = false,
+}: TaskCardProps) {
   const due = formatDue(task.dueDate);
+  const cover = assetUrl(task.coverImage);
 
   return (
-    <div className="group rounded-lg bg-white p-3 shadow-sm ring-1 ring-slate-200 transition hover:shadow-md">
+    <div
+      draggable
+      onDragStart={(e) => {
+        // Store the task id so the drop target knows what was dropped.
+        e.dataTransfer.setData('text/plain', task.id);
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart?.(task);
+      }}
+      onDragEnd={() => onDragEnd?.()}
+      className={`group cursor-grab overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 transition hover:shadow-md active:cursor-grabbing ${
+        isDragging ? 'opacity-40' : ''
+      }`}
+    >
+      {cover && (
+        <img
+          src={cover}
+          alt=""
+          className="h-24 w-full object-cover"
+          draggable={false}
+          loading="lazy"
+        />
+      )}
+      <div className="p-3">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-medium text-slate-900">{task.title}</h3>
         <div className="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100">
@@ -67,6 +102,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
             {due.text}
           </span>
         )}
+      </div>
       </div>
     </div>
   );

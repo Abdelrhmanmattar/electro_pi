@@ -43,6 +43,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: Date | null;
+  coverImage: string | null; // relative path to the uploaded cover image (bonus)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,7 @@ export interface CreateTaskInput {
   status?: TaskStatus;
   priority?: TaskPriority;
   dueDate?: Date | null;
+  coverImage?: string | null;
 }
 
 /** Fields that may be updated on an existing task (all optional). */
@@ -64,6 +66,7 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   priority?: TaskPriority;
   dueDate?: Date | null;
+  coverImage?: string | null;
 }
 
 /** Query criteria for search + filtering (requirements #8 and #9). */
