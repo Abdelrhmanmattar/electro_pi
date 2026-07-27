@@ -48,18 +48,18 @@ export function useTasks(filters: TaskFilters) {
       input: TaskInput,
       opts: { id?: string; coverFile?: File; removeCover?: boolean } = {}
     ) => {
-      let taskId = opts.id;
-      if (taskId) {
-        await taskService.update(taskId, input);
+      if (opts.id) {
+        // UPDATE: patch fields (JSON), then adjust the cover via its own
+        // endpoint if the user changed it.
+        await taskService.update(opts.id, input);
+        if (opts.coverFile) {
+          await taskService.uploadCover(opts.id, opts.coverFile);
+        } else if (opts.removeCover) {
+          await taskService.removeCover(opts.id);
+        }
       } else {
-        const created = await taskService.create(input);
-        taskId = created.id;
-      }
-
-      if (opts.coverFile) {
-        await taskService.uploadCover(taskId, opts.coverFile);
-      } else if (opts.removeCover) {
-        await taskService.removeCover(taskId);
+        // CREATE: a single request carries fields + optional cover file.
+        await taskService.create(input, opts.coverFile);
       }
 
       await fetchTasks();

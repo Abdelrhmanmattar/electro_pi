@@ -34,7 +34,10 @@ export class TaskController {
 
   create = async (req: Request, res: Response): Promise<void> => {
     const body = req.body as CreateTaskBody;
-    const task = await this.createTask.execute({ userId: this.userId(req), ...body });
+    const userId = this.userId(req);
+    // If the request was multipart with an "image" file, attach it as the cover.
+    const coverImage = req.file ? this.storage.publicPath(req.file.filename) : null;
+    const task = await this.createTask.execute({ userId, ...body, coverImage });
     res.status(201).json({ task: toTaskResponse(task) });
   };
 
@@ -60,8 +63,32 @@ export class TaskController {
 
   update = async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id as string;
-    const body = req.body as UpdateTaskBody;
-    const task = await this.updateTask.execute(id, this.userId(req), body);
+    const userId = this.userId(req);
+    // Split the cover intent (removeCover flag + uploaded file) from the field
+    // updates. The rest of `body` are the task fields to patch.
+    const { removeCover, ...fields } = req.body as UpdateTaskBody;
+
+    const hasFieldChanges = Object.keys(fields).length > 0;
+    const hasNewCover = !!req.file;
+    const wantsRemoveCover = removeCover === true;
+
+    if (!hasFieldChanges && !hasNewCover && !wantsRemoveCover) {
+      throw new ValidationError('At least one field must be provided');
+    }
+
+    let task = await this.getTaskById.execute(id, userId); // 404s if not owned
+
+    if (hasFieldChanges) {
+      task = await this.updateTask.execute(id, userId, fields);
+    }
+
+    // Cover: a newly uploaded image wins; otherwise honor an explicit removal.
+    if (hasNewCover && req.file) {
+      task = await this.setTaskCover.execute(id, userId, this.storage.publicPath(req.file.filename));
+    } else if (wantsRemoveCover) {
+      task = await this.setTaskCover.execute(id, userId, null);
+    }
+
     res.status(200).json({ task: toTaskResponse(task) });
   };
 

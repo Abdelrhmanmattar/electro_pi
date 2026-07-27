@@ -11,6 +11,7 @@ export interface CreateTaskInput {
   status?: TaskStatus;
   priority?: TaskPriority;
   dueDate?: Date | null;
+  coverImage?: string | null;
 }
 
 export class CreateTask {
@@ -24,6 +25,7 @@ export class CreateTask {
       status: input.status,
       priority: input.priority,
       dueDate: input.dueDate,
+      coverImage: input.coverImage,
     });
   }
 }

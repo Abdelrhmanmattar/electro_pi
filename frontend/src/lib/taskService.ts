@@ -18,7 +18,25 @@ export const taskService = {
     return data;
   },
 
-  async create(input: TaskInput): Promise<Task> {
+  /**
+   * Create a task. If a cover file is provided, sends everything as one
+   * multipart/form-data request (the backend parses fields + the "image" file
+   * and returns JSON with the stored cover link). Otherwise sends plain JSON.
+   */
+  async create(input: TaskInput, coverFile?: File): Promise<Task> {
+    if (coverFile) {
+      const form = new FormData();
+      form.append('title', input.title);
+      if (input.description !== undefined) form.append('description', input.description);
+      if (input.status) form.append('status', input.status);
+      if (input.priority) form.append('priority', input.priority);
+      if (input.dueDate) form.append('dueDate', input.dueDate);
+      form.append('image', coverFile);
+      const { data } = await api.post<TaskResponse>('/tasks', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data.task;
+    }
     const { data } = await api.post<TaskResponse>('/tasks', input);
     return data.task;
   },

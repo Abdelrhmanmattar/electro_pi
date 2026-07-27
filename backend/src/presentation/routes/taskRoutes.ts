@@ -1,9 +1,9 @@
 /**
  * Task routes (presentation layer) — ALL protected by the auth middleware.
  *   GET    /api/tasks             list (search + filter + pagination)
- *   POST   /api/tasks             create
+ *   POST   /api/tasks             create (JSON, or multipart with an "image" cover)
  *   GET    /api/tasks/:id         read one
- *   PATCH  /api/tasks/:id         update
+ *   PATCH  /api/tasks/:id         update (JSON, or multipart with an "image" cover)
  *   DELETE /api/tasks/:id         delete
  *   POST   /api/tasks/:id/cover   upload a cover image (multipart, field "image")
  *   DELETE /api/tasks/:id/cover   remove the cover image
@@ -26,9 +26,12 @@ export function createTaskRoutes(controller: TaskController, authMiddleware: Req
   router.use(authMiddleware);
 
   router.get('/', validate(listTasksQuerySchema, 'query'), asyncHandler(controller.list));
-  router.post('/', validate(createTaskSchema), asyncHandler(controller.create));
+  // uploadImage runs first: for multipart requests it parses the fields + the
+  // optional "image" file; for JSON requests it passes through untouched.
+  router.post('/', uploadImage, validate(createTaskSchema), asyncHandler(controller.create));
   router.get('/:id', asyncHandler(controller.getOne));
-  router.patch('/:id', validate(updateTaskSchema), asyncHandler(controller.update));
+  // uploadImage parses an optional "image" for multipart requests; JSON passes through.
+  router.patch('/:id', uploadImage, validate(updateTaskSchema), asyncHandler(controller.update));
   router.delete('/:id', asyncHandler(controller.remove));
 
   // Cover image (bonus: task attachments). uploadImage runs multer first.
