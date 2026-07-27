@@ -11,6 +11,7 @@
     "migrate": "tsx src/scripts/migrate.ts",
     "seed": "tsx src/scripts/seed.ts",
     "seed:user2": "tsx src/scripts/seedUser2.ts",
+    "seed:todos": "tsx src/scripts/seedTodos.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

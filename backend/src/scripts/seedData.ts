@@ -105,3 +105,68 @@ export async function seedUser(profile: SeedProfile): Promise<void> {
   }
   console.log(`   • created ${profile.tasks.length} tasks for ${profile.email}`);
 }
+
+/**
+ * Ten "To Do" tasks for the Demo User. All share status 'todo' with a spread of
+ * priorities and due dates, useful for demonstrating a full To Do column,
+ * search, and pagination.
+ */
+export const DEMO_TODO_TASKS: SeedTask[] = [
+  { title: 'Write project README', description: 'Setup, env vars, API endpoints, known issues', status: 'todo', priority: 'high', dueInDays: 1 },
+  { title: 'Add form validation messages', description: 'Inline errors on login and task forms', status: 'todo', priority: 'medium', dueInDays: 2 },
+  { title: 'Set up ESLint + Prettier', description: 'Consistent formatting across the codebase', status: 'todo', priority: 'low', dueInDays: 3 },
+  { title: 'Write API integration tests', description: 'Cover auth and task CRUD endpoints', status: 'todo', priority: 'high', dueInDays: 4 },
+  { title: 'Improve mobile layout', description: 'Test the board on small screens', status: 'todo', priority: 'medium', dueInDays: 5 },
+  { title: 'Add empty-state illustrations', description: 'Friendlier empty columns', status: 'todo', priority: 'low', dueInDays: 6 },
+  { title: 'Configure CI pipeline', description: 'Run typecheck + tests on push', status: 'todo', priority: 'medium', dueInDays: 7 },
+  { title: 'Add password strength meter', description: 'Guide users on the register form', status: 'todo', priority: 'low', dueInDays: 8 },
+  { title: 'Prepare deployment', description: 'Dockerize and deploy a live demo', status: 'todo', priority: 'high', dueInDays: 10 },
+  { title: 'Record a demo walkthrough', description: 'Short video of the main features', status: 'todo', priority: 'medium', dueInDays: 12 },
+];
+
+/**
+ * APPEND tasks to an existing user WITHOUT clearing their current tasks.
+ * (seedUser replaces; this one adds.) Creates the user first if missing.
+ */
+export async function addTasksForUser(
+  profile: Pick<SeedProfile, 'name' | 'email' | 'password'>,
+  newTasks: SeedTask[]
+): Promise<number> {
+  const users = new MongoUserRepository();
+  const tasks = new MongoTaskRepository();
+  const hasher = new BcryptPasswordHasher();
+
+  const existing = await UserModel.findOne({ email: profile.email }).lean<{
+    _id: Types.ObjectId;
+  } | null>();
+
+  let userId: string;
+  if (existing) {
+    userId = String(existing._id);
+    console.log(`   • found existing user ${profile.email}`);
+  } else {
+    const passwordHash = await hasher.hash(profile.password);
+    const created = await users.create({
+      name: profile.name,
+      email: profile.email,
+      passwordHash,
+    });
+    userId = created.id;
+    console.log(`   • created user ${profile.email}`);
+  }
+
+  for (const t of newTasks) {
+    const dueDate =
+      t.dueInDays === null ? null : new Date(BASE_DATE.getTime() + t.dueInDays * 86_400_000);
+    await tasks.create({
+      userId,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      priority: t.priority,
+      dueDate,
+    });
+  }
+  console.log(`   • added ${newTasks.length} tasks to ${profile.email}`);
+  return newTasks.length;
+}
