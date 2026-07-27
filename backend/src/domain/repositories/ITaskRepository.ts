@@ -31,6 +31,12 @@ export interface ITaskRepository {
   findMany(query: TaskQuery): Promise<PaginatedTasks>;
 
   /**
+   * Return a user's ENTIRE task list (no filter/pagination), newest first.
+   * Used to populate the per-user cache, which is then filtered in memory.
+   */
+  findAllForUser(userId: string): Promise<Task[]>;
+
+  /**
    * Update a task owned by userId. Returns the updated task, or null if it
    * doesn't exist or isn't owned by the user.
    */

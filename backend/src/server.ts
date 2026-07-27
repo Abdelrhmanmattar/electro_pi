@@ -6,9 +6,13 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/connection';
+import { connectRedis, disconnectRedis } from './infrastructure/cache/redisClient';
 
 async function bootstrap(): Promise<void> {
   await connectDatabase();
+  // Fire-and-forget: never blocks startup. If Redis is down the app runs
+  // without cache and connects in the background when it becomes available.
+  connectRedis();
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
@@ -20,6 +24,7 @@ async function bootstrap(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     console.log(`\n${signal} received — shutting down...`);
     server.close(async () => {
+      await disconnectRedis();
       await disconnectDatabase();
       process.exit(0);
     });

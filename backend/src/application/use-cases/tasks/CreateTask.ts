@@ -2,6 +2,7 @@
  * Use case: create a task owned by the given user.
  */
 import type { ITaskRepository } from '../../../domain/repositories/ITaskRepository';
+import type { ITaskCache } from '../../../domain/services/ITaskCache';
 import type { Task, TaskStatus, TaskPriority } from '../../../domain/entities/Task';
 
 export interface CreateTaskInput {
@@ -15,10 +16,13 @@ export interface CreateTaskInput {
 }
 
 export class CreateTask {
-  constructor(private readonly tasks: ITaskRepository) {}
+  constructor(
+    private readonly tasks: ITaskRepository,
+    private readonly cache: ITaskCache
+  ) {}
 
   async execute(input: CreateTaskInput): Promise<Task> {
-    return this.tasks.create({
+    const task = await this.tasks.create({
       userId: input.userId,
       title: input.title,
       description: input.description,
@@ -27,5 +31,8 @@ export class CreateTask {
       dueDate: input.dueDate,
       coverImage: input.coverImage,
     });
+    // The user's cached lists are now stale — drop them.
+    await this.cache.invalidateUser(input.userId);
+    return task;
   }
 }

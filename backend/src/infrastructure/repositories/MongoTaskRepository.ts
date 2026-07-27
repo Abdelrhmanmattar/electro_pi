@@ -111,6 +111,15 @@ export class MongoTaskRepository implements ITaskRepository {
     };
   }
 
+  async findAllForUser(userId: string): Promise<Task[]> {
+    // Newest-first, same order as findMany, so in-memory pagination matches.
+    const raw = await TaskModel.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean<RawTask[]>()
+      .exec();
+    return raw.map(toDomain);
+  }
+
   async updateForUser(
     id: string,
     userId: string,

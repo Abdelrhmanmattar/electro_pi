@@ -20,6 +20,7 @@ import {
   UPLOAD_DIR,
   UPLOAD_ROUTE,
 } from './infrastructure/storage/LocalFileStorage';
+import { RedisTaskCache } from './infrastructure/cache/RedisTaskCache';
 
 // Application (use cases)
 import { RegisterUser } from './application/use-cases/auth/RegisterUser';
@@ -47,6 +48,7 @@ export function createApp(): Express {
   const hasher = new BcryptPasswordHasher();
   const tokens = new JwtTokenService();
   const storage = new LocalFileStorage();
+  const taskCache = new RedisTaskCache();
 
   const authController = new AuthController(
     new RegisterUser(userRepo, hasher, tokens),
@@ -55,12 +57,12 @@ export function createApp(): Express {
   );
 
   const taskController = new TaskController(
-    new CreateTask(taskRepo),
-    new GetTasks(taskRepo),
+    new CreateTask(taskRepo, taskCache),
+    new GetTasks(taskRepo, taskCache),
     new GetTaskById(taskRepo),
-    new UpdateTask(taskRepo),
-    new DeleteTask(taskRepo),
-    new SetTaskCover(taskRepo, storage),
+    new UpdateTask(taskRepo, taskCache),
+    new DeleteTask(taskRepo, taskCache),
+    new SetTaskCover(taskRepo, storage, taskCache),
     storage
   );
 
