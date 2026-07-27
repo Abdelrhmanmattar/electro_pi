@@ -1,0 +1,81 @@
+# Full stack for the Task Manager app.
+#
+#   docker compose up --build
+#
+# Services:
+#   mongo     - MongoDB database (persisted via a named volume)
+#   redis     - Redis cache
+#   backend   - Node/Express API (waits for mongo+redis, then migrates+seeds+serves)
+#   frontend  - React + Vite dev server (hot-reload)
+#
+# Inside this network, services reach each other by SERVICE NAME (e.g.
+# "mongo", "redis") — not 127.0.0.1. The browser, however, runs on the HOST,
+# so the frontend talks to the backend via http://localhost:5000.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: taskapp-mongo
+    ports:
+      # Host 27018 -> container 27017 to avoid clashing with a local MongoDB
+      # already using 27017. Containers still talk to it on 27017 via "mongo".
+      - "27018:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskapp-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: taskapp-backend
+    # Run migrate + seed (first boot) then start — see docker-entrypoint.sh.
+    entrypoint: ["sh", "docker-entrypoint.sh"]
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      # Service-name hosts (Docker network), NOT localhost.
+      MONGODB_URI: mongodb://mongo:27017/taskmanager
+      REDIS_URL: redis://redis:6379
+      # Must match a value the browser can reach the frontend at (CORS).
+      CLIENT_ORIGIN: http://localhost:5173
+      JWT_SECRET: a83c5c7d63070928d98020005403f2b1e45c6ba0fa3172a038876d952cdf906661d3df4a4d4e5d7b313a5a928560b0dd
+      JWT_EXPIRES_IN: 7d
+    volumes:
+      # Persist uploaded cover images (and the seed marker) across restarts.
+      - backend-uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: taskapp-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      # The browser runs on the HOST, so it reaches the API at localhost:5000.
+      VITE_API_URL: http://localhost:5000/api
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
+  backend-uploads:
