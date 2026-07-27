@@ -1,25 +1,35 @@
 /**
  * DashboardPage — the main task board.
  *
- * Composes: Navbar + filters + Kanban board + create/edit modal + delete
- * confirm. Renders the correct state (loading / error / empty / data) per
- * requirement #11.
+ * Composes: Navbar + filters + Kanban board (per-column pagination) + create/
+ * edit modal + delete confirm. Renders the correct state (loading / error /
+ * empty / data) per requirement #11.
  */
 import { useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
-import { TaskFilters } from '../components/TaskFilters';
+import { BoardFilters } from '../components/BoardFilters';
 import { TaskBoard } from '../components/TaskBoard';
 import { TaskForm, type TaskFormResult } from '../components/TaskForm';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/States';
-import { useTasks } from '../hooks/useTasks';
+import { useBoard, type BoardFilters as Filters } from '../hooks/useBoard';
 import { getErrorMessage } from '../lib/api';
-import type { Task, TaskFilters as Filters } from '../types';
+import type { Task } from '../types';
 
 export function DashboardPage() {
-  const [filters, setFilters] = useState<Filters>({ search: '', status: '', priority: '' });
-  const { tasks, loading, error, refetch, saveTask, deleteTask, moveTask } = useTasks(filters);
+  const [filters, setFilters] = useState<Filters>({ search: '', priority: '' });
+  const {
+    columns,
+    loading,
+    error,
+    totalTasks,
+    refetch,
+    setColumnPage,
+    saveTask,
+    deleteTask,
+    moveTask,
+  } = useBoard(filters);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -63,7 +73,7 @@ export function DashboardPage() {
   };
 
   const hasActiveFilters = useMemo(
-    () => Boolean(filters.search || filters.status || filters.priority),
+    () => Boolean(filters.search || filters.priority),
     [filters]
   );
 
@@ -86,7 +96,7 @@ export function DashboardPage() {
         </div>
 
         <div className="mb-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <TaskFilters filters={filters} onChange={patchFilters} />
+          <BoardFilters filters={filters} onChange={patchFilters} />
         </div>
 
         {/* State handling */}
@@ -94,7 +104,7 @@ export function DashboardPage() {
           <LoadingState label="Loading tasks..." />
         ) : error ? (
           <ErrorState message={error} onRetry={refetch} />
-        ) : tasks.length === 0 ? (
+        ) : totalTasks === 0 ? (
           hasActiveFilters ? (
             <EmptyState
               title="No tasks match your filters"
@@ -103,7 +113,7 @@ export function DashboardPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setFilters({ search: '', status: '', priority: '' })}
+                  onClick={() => setFilters({ search: '', priority: '' })}
                 >
                   Clear filters
                 </Button>
@@ -117,7 +127,13 @@ export function DashboardPage() {
             />
           )
         ) : (
-          <TaskBoard tasks={tasks} onEdit={openEdit} onDelete={setDeleting} onMove={moveTask} />
+          <TaskBoard
+            columns={columns}
+            onEdit={openEdit}
+            onDelete={setDeleting}
+            onMove={moveTask}
+            onPageChange={setColumnPage}
+          />
         )}
       </main>
 

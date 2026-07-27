@@ -1,28 +1,33 @@
 /**
- * TaskFilters — search box + status/priority dropdowns.
+ * BoardFilters — search box + priority dropdown for the Kanban board.
+ *
+ * There's no status dropdown here: on the board each column IS a status, so a
+ * board-wide status filter would just empty the other columns. Search and
+ * priority apply within every column.
+ *
  * The search input is debounced locally so we don't refetch on every keystroke.
  */
 import { useEffect, useState } from 'react';
 import { Select } from './ui/Select';
-import { TASK_STATUSES, TASK_PRIORITIES, STATUS_LABELS, PRIORITY_LABELS } from '../types';
-import type { TaskFilters as Filters, TaskStatus, TaskPriority } from '../types';
+import { TASK_PRIORITIES, PRIORITY_LABELS } from '../types';
+import type { TaskPriority } from '../types';
+import type { BoardFilters as Filters } from '../hooks/useBoard';
 
-interface TaskFiltersProps {
+interface BoardFiltersProps {
   filters: Filters;
   onChange: (patch: Partial<Filters>) => void;
 }
 
-const statusOptions = TASK_STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] }));
 const priorityOptions = TASK_PRIORITIES.map((p) => ({ value: p, label: PRIORITY_LABELS[p] }));
 
-export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
+export function BoardFilters({ filters, onChange }: BoardFiltersProps) {
   const [searchText, setSearchText] = useState(filters.search ?? '');
 
   // Debounce the search input (300ms) before propagating to the query.
   useEffect(() => {
     const id = setTimeout(() => {
       if ((filters.search ?? '') !== searchText) {
-        onChange({ search: searchText, page: 1 });
+        onChange({ search: searchText });
       }
     }, 300);
     return () => clearTimeout(id);
@@ -60,21 +65,11 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
 
       <div className="w-full sm:w-40">
         <Select
-          label="Status"
-          placeholder="All statuses"
-          options={statusOptions}
-          value={filters.status ?? ''}
-          onChange={(e) => onChange({ status: e.target.value as TaskStatus | '', page: 1 })}
-        />
-      </div>
-
-      <div className="w-full sm:w-40">
-        <Select
           label="Priority"
           placeholder="All priorities"
           options={priorityOptions}
           value={filters.priority ?? ''}
-          onChange={(e) => onChange({ priority: e.target.value as TaskPriority | '', page: 1 })}
+          onChange={(e) => onChange({ priority: e.target.value as TaskPriority | '' })}
         />
       </div>
     </div>
