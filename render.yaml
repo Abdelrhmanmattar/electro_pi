@@ -1,0 +1,43 @@
+# Render blueprint — single web service that builds BOTH apps and serves the
+# React frontend from the Node backend (one URL, no CORS).
+#
+# Deploy: push this repo to GitHub, then in Render → New → Blueprint → pick the
+# repo. Set the secret env vars (MONGODB_URI, JWT_SECRET) in the dashboard.
+services:
+  - type: web
+    name: taskapp
+    runtime: node
+    plan: free
+    # Build the frontend (dist/) and the backend (dist/), from the repo root.
+    buildCommand: |
+      cd frontend && npm ci && npm run build
+      cd ../backend && npm ci && npm run build
+    # Start the compiled backend, which also serves ../frontend/dist.
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render provides PORT automatically; the app reads it.
+      - key: SERVE_CLIENT
+        value: "true"
+      # Path (relative to backend/) to the frontend's built assets.
+      - key: CLIENT_DIST_PATH
+        value: ../frontend/dist
+      # Same-origin deploy → CORS origin is the service's own URL. Render fills
+      # RENDER_EXTERNAL_URL automatically; we point CLIENT_ORIGIN at it.
+      - key: CLIENT_ORIGIN
+        fromService:
+          type: web
+          name: taskapp
+          property: host
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # --- Secrets: set these in the Render dashboard (sync:false = not in git) ---
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      # Optional: a Redis URL (e.g. Upstash). Leave unset to disable caching.
+      - key: REDIS_URL
+        sync: false

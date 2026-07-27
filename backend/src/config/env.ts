@@ -18,6 +18,13 @@ const envSchema = z.object({
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
   // Optional: when unset, task caching is simply disabled (app still works).
   REDIS_URL: z.string().optional(),
+  // When 'true', the backend also serves the built frontend (single-service
+  // deploy). Absolute path to the frontend's built dist/ folder.
+  SERVE_CLIENT: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
+  CLIENT_DIST_PATH: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

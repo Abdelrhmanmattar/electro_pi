@@ -5,6 +5,7 @@
  * into the layers that depend on abstractions. Everything above this file
  * depends only on interfaces; here we choose Mongo + bcrypt + JWT + Express.
  */
+import path from 'node:path';
 import express, { type Express } from 'express';
 import cors from 'cors';
 
@@ -85,8 +86,25 @@ export function createApp(): Express {
   app.use('/api/auth', createAuthRoutes(authController, authMiddleware));
   app.use('/api/tasks', createTaskRoutes(taskController, authMiddleware));
 
-  // 404 for anything unmatched, then the central error handler last.
-  app.use(notFoundHandler);
+  // Unknown /api/* routes → JSON 404 (must come before the SPA fallback so API
+  // calls never receive index.html).
+  app.use('/api', notFoundHandler);
+
+  // Single-service deploy: serve the built frontend (static assets + SPA
+  // fallback) so the same server hosts both the API and the React app.
+  if (env.SERVE_CLIENT && env.CLIENT_DIST_PATH) {
+    const clientDist = path.resolve(env.CLIENT_DIST_PATH);
+    app.use(express.static(clientDist));
+    // Any non-API, non-file route returns index.html so React Router handles it.
+    app.get(/^(?!\/api).*/, (_req, res) => {
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+  } else {
+    // API-only mode: anything unmatched is a 404.
+    app.use(notFoundHandler);
+  }
+
+  // Central error handler last.
   app.use(errorHandler);
 
   return app;
